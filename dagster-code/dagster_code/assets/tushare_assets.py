@@ -231,6 +231,87 @@ def tushare_futures_daily(context, clickhouse: ResourceParam[ClickhouseBareResou
         }
     )
 
+
+@asset(
+    deps=['tushare_trade_calendar'],
+    config_schema={
+        'start_date': Field(str, description='开始日期，格式：yyyymmdd',
+                            default_value=pd.Timestamp.now().strftime('%Y%m%d')),
+        'end_date': Field(str, description='结束日期，格式：yyyymmdd',
+                          default_value=pd.Timestamp.now().strftime('%Y%m%d')),
+    },
+    group_name='TuShareSource',
+    tags={'env': 'production'},
+)
+def tushare_dragon_top_list_daily(context, clickhouse: ResourceParam[ClickhouseBareResource],
+                                  tushare: ResourceParam[TuShareResource]) -> MaterializeResult:
+    """
+    TuShare日频龙虎榜交易数据
+    """
+    table_name = 'quant_data.o_tushare_dragon_top_daily'
+    count = 0
+    start_date_str, end_date_str = context.op_config['start_date'], context.op_config['end_date']
+    logger.info(f'龙虎榜交易日期参数：{start_date_str} -> {end_date_str}')
+
+    start_date = pd.to_datetime(start_date_str)
+    end_date = pd.to_datetime(end_date_str)
+
+    execute_date_list = clickhouse.get_split_date_range(start_date, end_date, table_name=table_name, interval=1)
+    for date_range in execute_date_list:
+        daily_df = tushare.get_top_list_daily(start_date=date_range[0].strftime('%Y%m%d'),
+                                              end_date=date_range[1].strftime('%Y%m%d'))
+        if daily_df is None or daily_df.empty:
+            continue
+        count += daily_df.shape[0]
+        logger.info(f'下载龙虎榜日频数据：{date_range[0]} -> {date_range[1]} 数量:{daily_df.shape[0]}')
+        clickhouse.client.insert_df(table=table_name, df=daily_df)
+    return MaterializeResult(
+        metadata={
+            'table_name': MetadataValue.text(table_name)
+        }
+    )
+
+
+@asset(
+    deps=['tushare_trade_calendar'],
+    config_schema={
+        'start_date': Field(str, description='开始日期，格式：yyyymmdd',
+                            default_value=pd.Timestamp.now().strftime('%Y%m%d')),
+        'end_date': Field(str, description='结束日期，格式：yyyymmdd',
+                          default_value=pd.Timestamp.now().strftime('%Y%m%d')),
+    },
+    group_name='TuShareSource',
+    tags={'env': 'production'},
+)
+def tushare_dragon_top_inst_daily(context, clickhouse: ResourceParam[ClickhouseBareResource],
+                                  tushare: ResourceParam[TuShareResource]) -> MaterializeResult:
+    """
+    TuShare日频龙虎榜机构数据
+    """
+    table_name = 'quant_data.o_tushare_dragon_top_inst_daily'
+    count = 0
+    start_date_str, end_date_str = context.op_config['start_date'], context.op_config['end_date']
+    logger.info(f'龙虎榜机构交易日期参数：{start_date_str} -> {end_date_str}')
+
+    start_date = pd.to_datetime(start_date_str)
+    end_date = pd.to_datetime(end_date_str)
+
+    execute_date_list = clickhouse.get_split_date_range(start_date, end_date, table_name=table_name, interval=1)
+    for date_range in execute_date_list:
+        daily_df = tushare.get_top_inst_daily(start_date=date_range[0].strftime('%Y%m%d'),
+                                              end_date=date_range[1].strftime('%Y%m%d'))
+        if daily_df is None or daily_df.empty:
+            continue
+        count += daily_df.shape[0]
+        logger.info(f'下载龙虎榜机构日频数据：{date_range[0]} -> {date_range[1]} 数量:{daily_df.shape[0]}')
+        clickhouse.client.insert_df(table=table_name, df=daily_df)
+    return MaterializeResult(
+        metadata={
+            'table_name': MetadataValue.text(table_name)
+        }
+    )
+
+
 @asset(
     config_schema={
         'refresh': Field(bool, description='是否刷新已有数据', default_value=False)

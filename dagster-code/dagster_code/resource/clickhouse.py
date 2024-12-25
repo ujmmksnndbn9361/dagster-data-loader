@@ -80,7 +80,7 @@ class ClickhouseBareResource:
         logger.info(f"获取到历史日期,最终执行时间范围:{result}")
         return result
 
-    def get_split_date_range(self, start_date: Timestamp, end_date: Timestamp, table_name: str) -> list:
+    def get_split_date_range(self, start_date: Timestamp, end_date: Timestamp, table_name: str, interval=10) -> list:
         """
         获取拆分后的实际数据下载时间范围
         :param start_date: 开始时间
@@ -90,6 +90,6 @@ class ClickhouseBareResource:
         """
         result = self.get_date_range(start_date, end_date, table_name)
         logger.info(f"获取到历史日期,最终执行时间范围:{result}")
-        split_result = [group for x in result for group in split_exec_date_range(x[0], x[1])]
+        split_result = [group for x in result for group in split_exec_date_range(x[0], x[1], interval)]
         logger.info(f"拆分后执行时间范围:{split_result}")
         return split_result

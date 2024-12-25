@@ -88,12 +88,38 @@ class TuShareResource:
                   "change1", "change2", "vol", "amount", "oi", "oi_chg"]
 
         final_df = self.fetch_all_data(self._ts_client.fut_daily, start_date=start_date, end_date=end_date,
-                                             fields=fields)
+                                       fields=fields)
         final_df['trade_date'] = pd.to_datetime(final_df['trade_date'])
         field_mapping = {'vol': 'volume'}
         final_df.rename(columns=field_mapping, inplace=True)
         final_df.fillna(value=0, inplace=True)
         logger.info(f'{start_date} -> {end_date} futures daily length:{final_df.shape[0]} ')
+        return final_df
+
+    def get_top_list_daily(self, start_date, end_date):
+        logger.info(f'开始获取龙虎榜每日明细数据，时间范围：{start_date} -> {end_date}')
+        fields = ["trade_date", "ts_code", "name", "close", "pct_change", "turnover_rate", "amount", "l_sell", "l_buy",
+                  "l_amount", "net_amount", "net_rate", "amount_rate", "float_values", "reason"]
+
+        final_df = self.fetch_all_data(self._ts_client.top_list, trade_date=start_date, fields=fields)
+        if final_df is None:
+            return None
+        final_df['trade_date'] = pd.to_datetime(final_df['trade_date'])
+        final_df.fillna(value=0, inplace=True)
+        logger.info(f'{start_date} -> {end_date} top list daily length:{final_df.shape[0]} ')
+        return final_df
+
+    def get_top_inst_daily(self, start_date, end_date):
+        logger.info(f'开始获取龙虎榜每日明细数据，时间范围：{start_date} -> {end_date}')
+        fields = ["trade_date", "ts_code", "exalter", "buy", "buy_rate", "sell", "sell_rate", "net_buy", "side",
+                  "reason"]
+
+        final_df = self.fetch_all_data(self._ts_client.top_inst, trade_date=start_date, fields=fields)
+        if final_df is None:
+            return None
+        final_df['trade_date'] = pd.to_datetime(final_df['trade_date'])
+        final_df.fillna(value=0, inplace=True)
+        logger.info(f'{start_date} -> {end_date} top inst daily length:{final_df.shape[0]} ')
         return final_df
 
     def fetch_all_data(self, func, date_fields=[], limit=3000, *args, **kwargs):
@@ -107,6 +133,8 @@ class TuShareResource:
                 break
             all_data.append(temp_df)
             offset += limit
+        if not all_data:
+            return None
         all_df = pd.concat(all_data, ignore_index=True)
         all_df['create_time'] = pd.Timestamp.now()
         for col in date_fields:
